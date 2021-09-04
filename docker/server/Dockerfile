@@ -1,7 +1,12 @@
 # Stage 1: Download all dependencies
 FROM ubuntu:20.04 AS dependencies
 
-RUN apt-get update && apt-get install -y --no-install-recommends cmake
+# Need latest cmake for ARM64 support
+RUN apt-get update && apt-get install -y wget
+RUN wget -qO- "https://cmake.org/files/v3.21/cmake-3.21.2-linux-aarch64.tar.gz" | \
+  tar --strip-components=1 -xz -C /usr/local
+
+RUN apt-get update && apt-get install -y --no-install-recommends cmake ninja-build
 
 RUN apt-get update && apt-get install -y --no-install-recommends git
 
@@ -16,6 +21,8 @@ RUN ./vcpkg/bootstrap-vcpkg.sh
 
 WORKDIR /opt/vcpkg
 COPY vcpkg.json /opt/vcpkg/
+# Required for ARM64 support
+ENV VCPKG_FORCE_SYSTEM_BINARIES=1
 RUN /opt/vcpkg/vcpkg --feature-flags=binarycaching,manifests,versions install
 
 # Stage 2: create build
