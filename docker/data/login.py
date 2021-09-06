@@ -87,9 +87,9 @@ def do_login(data):
                 {
                     'id': 0,
                     'name': os.getenv('SERVER_NAME', 'OTServBR-Global'),
-                    'externaladdressprotected': os.getenv('PROXY_IP', '127.0.0.1'),
+                    'externaladdressprotected': os.getenv('PROXY_IP', '192.168.0.37'),
                     'externalportprotected': int(os.getenv('SERVER_GAME_PORT', 7172)),
-                    'externaladdressunprotected': os.getenv('PROXY_IP', '127.0.0.1'),
+                    'externaladdressunprotected': os.getenv('PROXY_IP', '192.168.0.37'),
                     'externalportunprotected': int(os.getenv('SERVER_GAME_PORT', 7172)),
                     'previewstate': 0,
                     'location': 'BRA',
