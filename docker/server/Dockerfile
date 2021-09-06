@@ -1,19 +1,16 @@
 # Stage 1: Download all dependencies
 FROM ubuntu:20.04 AS dependencies
 
-# Need latest cmake for ARM64 support
-RUN apt-get update && apt-get install -y wget
+RUN apt-get install -y --no-install-recommends \
+	git build-essential ca-certificates curl zip unzip tar pkg-config libluajit-5.1-dev wget
+
+# vcpkg cannot yet bootstrap aarch64 binaries so we need system installs
+# https://github.com/microsoft/vcpkg/discussions/17738
+ENV VCPKG_FORCE_SYSTEM_BINARIES=1
+RUN apt-get update && apt-get install -y ninja-build
+# Manually install aarch64 cmake (this command not good for other platforms)
 RUN wget -qO- "https://cmake.org/files/v3.21/cmake-3.21.2-linux-aarch64.tar.gz" | \
   tar --strip-components=1 -xz -C /usr/local
-
-RUN apt-get update && apt-get install -y --no-install-recommends cmake ninja-build
-
-RUN apt-get update && apt-get install -y --no-install-recommends git
-
-RUN apt-get install -y --no-install-recommends \
-	build-essential ca-certificates curl zip unzip tar pkg-config
-
-RUN apt-get install -y --no-install-recommends libluajit-5.1-dev unzip
 
 WORKDIR /opt
 RUN git clone https://github.com/microsoft/vcpkg
@@ -21,13 +18,12 @@ RUN ./vcpkg/bootstrap-vcpkg.sh
 
 WORKDIR /opt/vcpkg
 COPY vcpkg.json /opt/vcpkg/
-# Required for ARM64 support
-ENV VCPKG_FORCE_SYSTEM_BINARIES=1
 RUN /opt/vcpkg/vcpkg --feature-flags=binarycaching,manifests,versions install
 
 # Stage 2: create build
 FROM dependencies AS build
 
+# TODO Will this work with system cmake?
 COPY cmake /srv/cmake
 COPY CMakeLists.txt vcpkg.json /srv/
 COPY src /srv/src
@@ -42,10 +38,12 @@ FROM build
 COPY --from=build /srv/build/bin/otbr /bin/otbr
 COPY LICENSE *.sql key.pem /otbr/
 COPY data /otbr/data
-COPY config.lua.dist /otbr/config.lua
+# Use local config rather than .dist
+COPY config.lua /otbr/config.lua
 
 WORKDIR /otbr
 
+# Configure config for docker-compose database
 RUN sed -i '/mysqlHost = .*$/c\mysqlHost = "mysql"' config.lua \
   && sed -i '/mysqlUser = .*$/c\mysqlUser = "otserver"' config.lua \
   && sed -i '/mysqlPass = .*$/c\mysqlPass = "otserver"' config.lua \
@@ -55,4 +53,3 @@ RUN sed -i '/mysqlHost = .*$/c\mysqlHost = "mysql"' config.lua \
 VOLUME /otbr
 
 ENTRYPOINT ["/bin/otbr"]
-
